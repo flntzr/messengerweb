@@ -1,0 +1,50 @@
+Project
+=======
+- name: messenger-web
+- purpose: AJAX & JavaScript based Web 2.0 application
+
+
+Dependencies
+============
+- Projects: messenger-model
+
+- User-Libraries (from Libraries in Moodle):
+  - sb-toolbox-1.1
+     - ./sb-toolbox-1.1/sb-toolbox-1.1.x.jar
+
+  - javaee-api-7
+    - ./javaee-api-7/javaee-api-7.0.jar
+    - ./javaee-api-7/javaee-api-7.0-sources.jar -> source attachment (external source) for above
+
+  - hibernate-validator-5.1
+    - ./jax-val/hibernate-validator-5.1.x/*.jar
+
+  - jdbc-mysql-5.1
+    - ./jdbc/mysql-connector-java-5.1.x-bin.jar
+
+  - eclipse-link-2.6
+    - ./jpa/eclipse-link-2.6.x/eclipselink.jar
+ 
+ - jersey-2.23
+    - ./jax-rs/jersey-2.23.2/*.jar
+
+
+Project Settings
+================
+- ensure Compiler Compliance Level 1.8+ (Properties->Java Compiler)
+  on Eclipse IDE for Java Developers, version Luna+
+- optional: Convert to faceted form (Properties->Project Facets) and enable "JavaScript" facet
+
+
+Firefox Setup
+=============
+- install Add-On "JSONView" or similar in about:addons
+- insert "application/json;q=0.9," before similar entry for XML in
+  "about:config" setting "network.http.accept.default"
+
+
+File Import
+===========
+- type: General/Archive File
+- download from: //moodle/messenger-web.jar
+- into: messenger-web/src

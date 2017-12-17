@@ -50,7 +50,45 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 	 * view's bottom avatar slider with the result.
 	 */
 	de_sb_messenger.PeopleController.prototype.query = function () {
-		// TODO
+		let sessionUser = JSON.parse(JSON.stringify(de_sb_messenger.APPLICATION.sessionUser));
+		let inputs = document.querySelectorAll("main .candidates fieldset input");
+		let email = inputs[0].value.trim();
+		let firstName = inputs[1].value.trim();
+		let lastName = inputs[2].value.trim();
+		let street = inputs[3].value.trim();
+		let city = inputs[4].value.trim();
+		let queryParams = [];
+		let queryParamString = "";
+		if (email != ""){
+			queryParams.push("mail=" + email);
+		}
+		if (firstName != "") {
+			queryParams.push("givenName=" + firstName); 
+		}
+		if (lastName != "") {
+			queryParams.push("familyName=" + lastName);
+		}
+		if (street != "") {
+			queryParams.push("street=" + street);
+		}
+		if (city != "") {
+			queryParams.push("city=" + city);
+		}
+		if (queryParams.length > 0) {
+			queryParamString = "?" + queryParams.join("&");
+		}
+		
+		de_sb_util.AJAX.invoke("/services/people/" + queryParamString, "GET", null, null, null, request => {
+			this.displayStatus(request.status, request.statusText);
+			if (request.status !== 200) return;
+
+			let people = JSON.parse(request.responseText);
+			let identities = people.map(p => p.identity);
+
+			let mainElement = document.querySelector("main");
+			let sectionElement = document.querySelector(".people-observed");
+			this.refreshAvatarSlider(sectionElement.querySelector("div.image-slider"), identities, this.toggleObservation);
+		});
 	}
 
 

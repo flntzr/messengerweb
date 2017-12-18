@@ -84,6 +84,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 
 			let people = JSON.parse(request.responseText);
 			let identities = people.map(p => p.identity);
+			identities = identities.filter((id) => id !== de_sb_messenger.APPLICATION.sessionUser.identity);
 
 			let mainElement = document.querySelector("main");
 			let sectionElement = document.querySelector(".people-observed");

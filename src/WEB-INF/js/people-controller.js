@@ -59,7 +59,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 		let city = inputs[4].value.trim();
 		let queryParams = [];
 		let queryParamString = "";
-		if (email != ""){
+		if (email != "") {
 			queryParams.push("mail=" + email);
 		}
 		if (firstName != "") {
@@ -86,8 +86,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 			let identities = people.map(p => p.identity);
 			identities = identities.filter((id) => id !== de_sb_messenger.APPLICATION.sessionUser.identity);
 
-			let mainElement = document.querySelector("main");
-			let sectionElement = document.querySelector(".people-observed");
+			let sectionElement = document.querySelector(".candidates");
 			this.refreshAvatarSlider(sectionElement.querySelector("div.image-slider"), identities, this.toggleObservation);
 		});
 	}
@@ -99,6 +98,30 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 	 * @param {String} personIdentity the identity of the person to add or remove
 	 */
 	de_sb_messenger.PeopleController.prototype.toggleObservation = function (personIdentity) {
-		// TODO
+		let sessionUser = de_sb_messenger.APPLICATION.sessionUser;
+		let observedReferences = sessionUser.observedReferences.slice();
+		let observedReferenceIndex = observedReferences.indexOf(personIdentity);
+		
+		if (observedReferenceIndex === -1) {
+			// add observed user
+			observedReferences.push(personIdentity);
+		} else {
+			// remove observed user
+			observedReferences.splice(observedReferenceIndex, 1);
+		}
+
+		let formData = new FormData();
+		for (let reference of observedReferences) {
+			formData.append('peopleObserved', reference);
+		}
+
+		de_sb_util.AJAX.invoke("/services/people/" + sessionUser.identity + "/peopleObserved", "PUT", {"Content-Type": "application/x-www-form-urlencoded"}, formData, null, request => {
+			this.displayStatus(request.status, request.statusText);
+			if (request.status !== 204) return;
+			
+			sessionUser.observedReferences = observedReferences.slice();
+			let sectionElement = document.querySelector(".people-observed");
+			this.refreshAvatarSlider(sectionElement.querySelector("div.image-slider"), observedReferences, this.toggleObservation);
+		});
 	}
 } ());

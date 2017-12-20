@@ -28,14 +28,6 @@
   
   <dependencies>
 
-	<!-- https://mvnrepository.com/artifact/javax/javaee-api -->
-	<dependency>
-    	<groupId>javax</groupId>
-    	<artifactId>javaee-api</artifactId>
-    	<version>7.0</version>
-    	<scope>provided</scope>
-	</dependency>
-
 	<!-- https://mvnrepository.com/artifact/org.eclipse.persistence/eclipselink -->
 	<dependency>
     	<groupId>org.eclipse.persistence</groupId>

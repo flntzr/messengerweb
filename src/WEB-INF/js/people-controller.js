@@ -110,12 +110,12 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 			observedReferences.splice(observedReferenceIndex, 1);
 		}
 
-		let formData = new FormData();
+		let body = [];
 		for (let reference of observedReferences) {
-			formData.append('peopleObserved', reference);
+			body.push("peopleObserved=" + reference);
 		}
 
-		de_sb_util.AJAX.invoke("/services/people/" + sessionUser.identity + "/peopleObserved", "PUT", {"Content-Type": "application/x-www-form-urlencoded"}, formData, null, request => {
+		de_sb_util.AJAX.invoke("/services/people/" + sessionUser.identity + "/peopleObserved", "PUT", {"Content-Type": "application/x-www-form-urlencoded"}, body.join("&"), null, request => {
 			this.displayStatus(request.status, request.statusText);
 			if (request.status !== 204) return;
 			

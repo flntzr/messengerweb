@@ -43,7 +43,25 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 	 * Displays the root messages.
 	 */
 	de_sb_messenger.MessagesController.prototype.displayRootMessages = function () {
-		// TODO
+		let sessionUser = de_sb_messenger.APPLICATION.sessionUser;
+		let subjectIDs = sessionUser.observedReferences.slice();
+		subjectIDs.push(sessionUser.identity);
+
+		let promises = [];
+		for (let subjectID of subjectIDs) {
+			promises.push(new Promise((resolve, reject) => {
+				de_sb_util.AJAX.invoke("/services/messages/?subjectReference=" + subjectID, "GET", null, null, null, request => {
+					if (request.status !== 200) return reject(request);
+					return resolve(request);
+				});
+			}));
+		}
+
+		Promise.all(promises).then(requests => {
+			console.log(requests);
+		}).catch(request => {
+			this.displayStatus(request.status, request.statusText);
+		});		
 	}
 
 

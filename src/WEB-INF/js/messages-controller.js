@@ -47,6 +47,19 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 		return date.toLocaleString();
 	}
 
+	var queryUsers = function(userIDs) {
+		let messagePromises = [];
+		for (let userID of userIDs) {
+			messagePromises.push(new Promise((resolve, reject) => {
+				de_sb_util.AJAX.invoke("/services/people/" + userID, "GET", null, null, null, request => {
+					if (request.status !== 200) return reject(request);
+					return resolve(request);
+				});
+			}));
+		}
+		return messagePromises;
+	}
+
 	var queryMessages = function(subjectReferences) {
 		let messagePromises = [];
 		for (let subjectID of subjectReferences) {
@@ -83,10 +96,10 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 
 		let messagePromises = queryMessages(subjectIDs);
 		let messagesListElement = document.querySelector(".messages > ul");
+		let messages = [];
 		Promise.all(messagePromises).then(messageRequests => {
 			this.displayStatus(messageRequests[0].status, messageRequests[0].statusText);
-			
-			let messages = [];
+
 			for (let request of messageRequests) {
 				messages = messages.concat(JSON.parse(request.response));
 			}
@@ -94,22 +107,25 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 				if (m1.creationTimestamp === m2.creationTimestamp) return 0;
 				return m1.creationTimestamp > m2.creationTimestamp? -1 : 1;
 			});
-			let userIDsWithAvatars = [];
-			for (let message of messages) {
+			return Promise.all(queryUsers(messages.map(m => m.authorReference)));
+		}).then(userRequests => {
+			// render timestamps, bodies, authors
+			for (let i = 0; i < messages.length; i++) {
+				let user = JSON.parse(userRequests[i].response);
 				let messageElement = document.querySelector("#message-output-template").content.cloneNode(true).firstElementChild;
-				messageElement.firstElementChild.querySelector("output").value = prettyPrintTimestamp(message.creationTimestamp);
-				messageElement.children[1].querySelector("output").value = message.body;
+				messageElement.firstElementChild.querySelector("output").value = user.name.given + " (" + prettyPrintTimestamp(messages[i].creationTimestamp) + ")";
+				messageElement.children[1].querySelector("output").value = messages[i].body;
 				messagesListElement.appendChild(messageElement);
-				userIDsWithAvatars.push(message.authorReference);
 			}
-			return Promise.all(queryAvatars(userIDsWithAvatars));
+			return Promise.all(queryAvatars(messages.map(m => m.authorReference)));
 		}).then(avatarRequests => {
+			// render avatars
 			var urlCreator = window.URL || window.webkitURL;
 			let requests = [];
 			let messageElements = messagesListElement.children;
 			for (let i = 0; i < avatarRequests.length; i++) {
 				messageElements[i].firstElementChild.querySelector("img").src = urlCreator.createObjectURL(avatarRequests[i].response);
-			}
+			}			
 		}).catch(request => {
 			this.displayStatus(request.status, request.statusText);
 		});		
@@ -123,6 +139,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 	 * @param subjectIdentity {String} the subject identity
 	 */
 	de_sb_messenger.MessagesController.prototype.displayMessageEditor = function (parentElement, subjectIdentity) {
+		console.log("displayMessageEditor");
 		// TODO
 	}
 
@@ -134,6 +151,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 	 * @param subjectIdentity the subject identity
 	 */
 	de_sb_messenger.MessagesController.prototype.persistMessage = function (messageElement, subjectIdentity) {
+		console.log("persistMessage");
 		// TODO
 	}
 } ());

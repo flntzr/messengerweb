@@ -37,7 +37,41 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 		this.displayRootMessages();
 	}
 
+	var prettyPrintTimestamp = function(timestamp) {
+		var date = new Date(timestamp);
+		// var month = date.toDateString();
+		// var hours = date.getHours();
+		// var minutes = "0" + date.getMinutes();
+		// var seconds = "0" + date.getSeconds();
+		// return hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2);
+		return date.toLocaleString();
+	}
 
+	var queryMessages = function(subjectReferences) {
+		let messagePromises = [];
+		for (let subjectID of subjectReferences) {
+			messagePromises.push(new Promise((resolve, reject) => {
+				de_sb_util.AJAX.invoke("/services/messages/?subjectReference=" + subjectID, "GET", null, null, null, request => {
+					if (request.status !== 200) return reject(request);
+					return resolve(request);
+				});
+			}));
+		}
+		return messagePromises;
+	}
+
+	var queryAvatars = function(userIDs) {
+		let avatarPromises = [];
+		for (let userID of userIDs) {
+			avatarPromises.push(new Promise((resolve, reject) => {
+				de_sb_util.AJAX.invoke(`/services/people/${userID}/avatar`, "GET", null, null, null, request => {
+					if (request.status !== 200) return reject(request);
+					return resolve(request);
+				}, "blob");
+			}));
+		}
+		return avatarPromises;
+	}
 
 	/**
 	 * Displays the root messages.
@@ -47,18 +81,35 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 		let subjectIDs = sessionUser.observedReferences.slice();
 		subjectIDs.push(sessionUser.identity);
 
-		let promises = [];
-		for (let subjectID of subjectIDs) {
-			promises.push(new Promise((resolve, reject) => {
-				de_sb_util.AJAX.invoke("/services/messages/?subjectReference=" + subjectID, "GET", null, null, null, request => {
-					if (request.status !== 200) return reject(request);
-					return resolve(request);
-				});
-			}));
-		}
-
-		Promise.all(promises).then(requests => {
-			console.log(requests);
+		let messagePromises = queryMessages(subjectIDs);
+		let messagesListElement = document.querySelector(".messages > ul");
+		Promise.all(messagePromises).then(messageRequests => {
+			this.displayStatus(messageRequests[0].status, messageRequests[0].statusText);
+			
+			let messages = [];
+			for (let request of messageRequests) {
+				messages = messages.concat(JSON.parse(request.response));
+			}
+			messages.sort((m1, m2) => {
+				if (m1.creationTimestamp === m2.creationTimestamp) return 0;
+				return m1.creationTimestamp > m2.creationTimestamp? -1 : 1;
+			});
+			let userIDsWithAvatars = [];
+			for (let message of messages) {
+				let messageElement = document.querySelector("#message-output-template").content.cloneNode(true).firstElementChild;
+				messageElement.firstElementChild.querySelector("output").value = prettyPrintTimestamp(message.creationTimestamp);
+				messageElement.children[1].querySelector("output").value = message.body;
+				messagesListElement.appendChild(messageElement);
+				userIDsWithAvatars.push(message.authorReference);
+			}
+			return Promise.all(queryAvatars(userIDsWithAvatars));
+		}).then(avatarRequests => {
+			var urlCreator = window.URL || window.webkitURL;
+			let requests = [];
+			let messageElements = messagesListElement.children;
+			for (let i = 0; i < avatarRequests.length; i++) {
+				messageElements[i].firstElementChild.querySelector("img").src = urlCreator.createObjectURL(avatarRequests[i].response);
+			}
 		}).catch(request => {
 			this.displayStatus(request.status, request.statusText);
 		});		

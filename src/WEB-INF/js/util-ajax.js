@@ -31,9 +31,10 @@ this.de_sb_util = this.de_sb_util || {};
 		          null for synchronized request processing
 		 * @return the XmlHttpRequest
 		 */
-		this.invoke = function (resource, method, header, body, credentials, callback) {
+		this.invoke = function (resource, method, header, body, credentials, callback, responseType) {
 			var request = new XMLHttpRequest();
 			request.overrideMimeType("text/plain");
+			if (responseType) request.responseType = responseType;
 
 			var asynchronous = typeof callback == "function";
 			if (asynchronous) {

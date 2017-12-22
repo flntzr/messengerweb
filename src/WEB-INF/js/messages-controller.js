@@ -179,11 +179,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 	 * @param subjectIdentity the subject identity
 	 */
 	de_sb_messenger.MessagesController.prototype.persistMessage = function (messageElement, subjectIdentity) {
-		let message = {
-			body: messageElement.querySelector("textarea").value,
-			subjectReference: subjectIdentity
-		};
-		let body = `subjectReference=${message.subjectReference}&body=${message.body}`
+		let body = `subjectReference=${subjectIdentity}&body=${messageElement.querySelector("textarea").value}`;
 		new Promise((resolve, reject) => {
 			de_sb_util.AJAX.invoke("/services/messages/", "PUT", {"Content-Type": "application/x-www-form-urlencoded"}, body, null, request => {
 				if (request.status !== 200) return reject(request);

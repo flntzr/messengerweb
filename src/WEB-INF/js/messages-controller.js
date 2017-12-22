@@ -105,7 +105,13 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 			for (let i = 0; i < messages.length; i++) {
 				let user = JSON.parse(userRequests[i].response);
 				let messageElement = document.querySelector("#message-output-template").content.cloneNode(true).firstElementChild;
-				messageElement.firstElementChild.firstElementChild.addEventListener("click", e => displayMessages.call(this, [messages[i].identity], messageElement.lastElementChild));
+				messageElement.firstElementChild.firstElementChild.addEventListener("click", e => {
+					let subListElement = messageElement.lastElementChild;
+					while (subListElement.firstChild) {
+						subListElement.removeChild(subListElement.firstChild);
+					}
+					displayMessages.call(this, [messages[i].identity], subListElement)
+				});
 				messageElement.firstElementChild.querySelector("output").value = user.name.given + " (" + prettyPrintTimestamp(messages[i].creationTimestamp) + ")";
 				messageElement.children[1].querySelector("output").value = messages[i].body;
 				parentElement.appendChild(messageElement);

@@ -53,33 +53,63 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 			messagePromises.push(new Promise((resolve, reject) => {
 				de_sb_util.AJAX.invoke("/services/people/" + userID, "GET", null, null, null, request => {
 					if (request.status !== 200) return reject(request);
-					return resolve(request);
+					this.displayStatus(request.status, request.statusText);
+					return resolve(JSON.parse(request.response));
 				});
 			}));
 		}
 		return Promise.all(messagePromises);
 	}
 
-	var queryMessages = function(subjectReferences) {
+	var queryMessage = function(messageID) {
+		return new Promise((resolve, reject) => {
+			de_sb_util.AJAX.invoke("/services/messages/" + messageID, "GET", null, null, null, request => {
+				if (request.status !== 200) return reject(request);
+				this.displayStatus(request.status, request.statusText);
+				return resolve(JSON.parse(request.response));
+			});
+		});
+	}
+
+	var queryMessages = function(messageIDs) {
+		let promises = [];
+		for (let messageID of messageIDs) {
+			promises.push(queryMessage.call(this, messageID));
+		}
+		return Promise.all(promises);
+	}
+
+	var queryMessagesForSubjects = function(subjectReferences) {
 		let messagePromises = [];
 		for (let subjectID of subjectReferences) {
 			messagePromises.push(new Promise((resolve, reject) => {
 				de_sb_util.AJAX.invoke("/services/messages/?subjectReference=" + subjectID, "GET", null, null, null, request => {
 					if (request.status !== 200) return reject(request);
-					return resolve(request);
+					this.displayStatus(request.status, request.statusText);
+					return resolve(JSON.parse(request.response));
 				});
 			}));
 		}
-		return Promise.all(messagePromises);
+		return Promise.all(messagePromises).then(messageArrays => {
+			let messages = [];
+			for (let messageArray of messageArrays) {
+				for (let message of messageArray) {
+					messages.push(message);
+				}
+			}
+			return messages;
+		});
 	}
 
 	var queryAvatars = function(userIDs) {
 		let avatarPromises = [];
+		let urlCreator = window.URL || window.webkitURL;
 		for (let userID of userIDs) {
 			avatarPromises.push(new Promise((resolve, reject) => {
 				de_sb_util.AJAX.invoke(`/services/people/${userID}/avatar`, "GET", null, null, null, request => {
 					if (request.status !== 200) return reject(request);
-					return resolve(request);
+					this.displayStatus(request.status, request.statusText);
+					return resolve(urlCreator.createObjectURL(request.response));
 				}, "blob");
 			}));
 		}
@@ -92,41 +122,42 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 		}
 	}
 
-	var displayMessages = function(subjectIDs, parentElement) {
+	var displayMessages = function(messageIDs, parentElement) {
 		let messages = [];
-		queryMessages(subjectIDs).then(messageRequests => {
-			this.displayStatus(messageRequests[0].status, messageRequests[0].statusText);
-
-			for (let request of messageRequests) {
-				messages = messages.concat(JSON.parse(request.response));
-			}
+		queryMessages.call(this, messageIDs).then(queriedMessages => {
+			messages = queriedMessages;
 			messages.sort((m1, m2) => {
 				if (m1.creationTimestamp === m2.creationTimestamp) return 0;
-				return m1.creationTimestamp > m2.creationTimestamp? -1 : 1;
+				return m1.creationTimestamp > m2.creationTimestamp ? -1 : 1;
 			});
-			return queryUsers(messages.map(m => m.subjectReference));
-		}).then(userRequests => {
+			return queryUsers.call(this, messages.map(m => m.authorReference));
+		}).then(users => {
 			// render timestamps, bodies, authors
 			for (let i = 0; i < messages.length; i++) {
-				let user = JSON.parse(userRequests[i].response);
+				let user = users[i];
 				let messageElement = document.querySelector("#message-output-template").content.cloneNode(true).firstElementChild;
 				messageElement.firstElementChild.firstElementChild.addEventListener("click", e => {
 					let subListElement = messageElement.lastElementChild;
 					empty(subListElement);
-					displayMessages.call(this, [messages[i].identity], subListElement);
+					queryMessagesForSubjects.call(this, [messages[i].identity]).then(messagesForSubject => {
+						displayMessages.call(this, messagesForSubject.map(m => m.identity), subListElement);
+					});
 				});
 				let creationDate = prettyPrintTimestamp(new Date(messages[i].creationTimestamp));
 				messageElement.firstElementChild.querySelector("output").value = user.name.given + " (" + creationDate + ")";
 				messageElement.children[1].querySelector("output").value = messages[i].body;
 				parentElement.appendChild(messageElement);
 			}
-			return queryAvatars(messages.map(m => m.authorReference));
-		}).then(avatarRequests => {
+			return queryAvatars.call(this, messages.map(m => m.authorReference));
+		}).then(avatars => {
 			// render avatars
-			let urlCreator = window.URL || window.webkitURL;
 			let messageElements = parentElement.children;
-			for (let i = 0; i < avatarRequests.length; i++) {
-				messageElements[i].firstElementChild.querySelector("img").src = urlCreator.createObjectURL(avatarRequests[i].response);
+			for (let i = 0; i < avatars.length; i++) {
+				let imageElement = messageElements[i].firstElementChild.querySelector("img");
+				imageElement.src = avatars[i];
+				imageElement.addEventListener("click", e => {
+					this.displayMessageEditor(messageElements[i].querySelector("ul"), messages[i].identity);
+				});
 			}			
 		}).catch(request => {
 			displayStatus(request.status, request.statusText);
@@ -141,7 +172,13 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 		let subjectIDs = sessionUser.observedReferences.slice();
 		subjectIDs.push(sessionUser.identity);
 		let messagesListElement = document.querySelector(".messages > ul");
-		displayMessages.call(this, subjectIDs, messagesListElement);
+		queryMessagesForSubjects.call(this, subjectIDs).then(messages => {
+			let messageIDs = [];
+			for (let message of messages) {
+				messageIDs.push(message.identity);
+			}
+			displayMessages.call(this, messageIDs, messagesListElement);
+		});
 	}
 
 
@@ -158,12 +195,13 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 		
 		let messageElement = document.querySelector("#message-input-template").content.cloneNode(true).firstElementChild;
 		let avatar;
-		queryAvatars([sessionUser.identity]).then(requests => {
-			let urlCreator = window.URL || window.webkitURL;
-			avatar = urlCreator.createObjectURL(requests[0].response);
-			return queryUsers([subjectIdentity]);
-		}).then(requests => {
-			let person = JSON.parse(requests[0].response);
+		queryAvatars.call(this, [sessionUser.identity]).then(avatars => {
+			avatar = avatars[0];
+			return queryMessage.call(this, subjectIdentity);
+		}).then(message => {
+			return queryUsers.call(this, [message.authorReference]);
+		}).then(users => {
+			let person = users[0];
 			let headerElements = messageElement.firstElementChild.children;
 			headerElements[1].querySelector("img").src = avatar;
 			let creationDate = prettyPrintTimestamp(new Date());
@@ -199,7 +237,9 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 				this.displayRootMessages();
 			} else {
 				empty(messageElement);
-				displayMessages.call(this, [subjectIdentity], messageElement);
+				queryMessagesForSubjects.call(this, [subjectIdentity]).then(messages => {
+					displayMessages.call(this, messages.map(m => m.identity), messageElement);
+				});
 			}
 		}).catch(request => {
 			this.displayStatus(request.status, request.statusText);

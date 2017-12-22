@@ -118,7 +118,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 			return queryAvatars(messages.map(m => m.authorReference));
 		}).then(avatarRequests => {
 			// render avatars
-			var urlCreator = window.URL || window.webkitURL;
+			let urlCreator = window.URL || window.webkitURL;
 			let messageElements = parentElement.children;
 			for (let i = 0; i < avatarRequests.length; i++) {
 				messageElements[i].firstElementChild.querySelector("img").src = urlCreator.createObjectURL(avatarRequests[i].response);
@@ -149,19 +149,25 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 	de_sb_messenger.MessagesController.prototype.displayMessageEditor = function (parentElement, subjectIdentity) {
 		let sessionUser = de_sb_messenger.APPLICATION.sessionUser;
 		let oldElement = document.querySelector(".message-input");
-		if (oldElement) {
-			oldElement.remove();
-		}
+		if (oldElement) oldElement.remove();
 		
-		let messageInputElement = document.querySelector("#message-input-template").content.cloneNode(true).firstElementChild;
+		let messageElement = document.querySelector("#message-input-template").content.cloneNode(true).firstElementChild;
+		let avatar;
 		queryAvatars([sessionUser.identity]).then(requests => {
-			var urlCreator = window.URL || window.webkitURL;
-			let headerElements = messageInputElement.firstElementChild.children;
-			headerElements[1].querySelector("img").src = urlCreator.createObjectURL(requests[0].response);
+			let urlCreator = window.URL || window.webkitURL;
+			avatar = urlCreator.createObjectURL(requests[0].response);
+			return queryUsers([subjectIdentity]);
+		}).then(requests => {
+			let person = JSON.parse(requests[0].response);
+			let headerElements = messageElement.firstElementChild.children;
+			headerElements[1].querySelector("img").src = avatar;
 			let creationDate = prettyPrintTimestamp(new Date());
-			headerElements[2].value = "TODO" + " (" + prettyPrintTimestamp(creationDate) + ")";
-			parentElement.appendChild(messageInputElement);
-		})
+			headerElements[2].value = person.name.given + " (" + prettyPrintTimestamp(creationDate) + ")";
+			messageElement.querySelector("button").addEventListener("click", e => {
+				this.persistMessage(messageElement, subjectIdentity);
+			});
+			parentElement.appendChild(messageElement);
+		});
 	
 	}
 
@@ -173,7 +179,22 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 	 * @param subjectIdentity the subject identity
 	 */
 	de_sb_messenger.MessagesController.prototype.persistMessage = function (messageElement, subjectIdentity) {
-		console.log("persistMessage");
-		// TODO
+		let message = {
+			body: messageElement.querySelector("textarea").value,
+			subjectReference: subjectIdentity
+		};
+		let body = `subjectReference=${message.subjectReference}&body=${message.body}`
+		new Promise((resolve, reject) => {
+			de_sb_util.AJAX.invoke("/services/messages/", "PUT", {"Content-Type": "application/x-www-form-urlencoded"}, body, null, request => {
+				if (request.status !== 200) return reject(request);
+				return resolve(request);
+			});
+		}).then(request => {
+			// REFRESH
+			this.displayStatus(request.status, request.statusText);
+			console.log("REFRESH");
+		}).catch(request => {
+			this.displayStatus(request.status, request.statusText);
+		});
 	}
 } ());

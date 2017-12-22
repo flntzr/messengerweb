@@ -7,21 +7,22 @@
 this.de_sb_messenger = this.de_sb_messenger || {};
 (function () {
 	var SUPER = de_sb_messenger.Controller;
+	// const APPLICATION = de_sb_messenger.APPLICATION;
 
 	/**
 	 * Creates a new messages controller that is derived from an abstract controller.
 	 * @param entityCache {de_sb_util.EntityCache} an entity cache
 	 */
-	de_sb_messenger.MessagesController = function (entityCache) {
+	const MessagesController = de_sb_messenger.MessagesController = function (entityCache) {
 		SUPER.call(this, 1, entityCache);
 	}
-	de_sb_messenger.MessagesController.prototype = Object.create(SUPER.prototype);
-	de_sb_messenger.MessagesController.prototype.constructor = de_sb_messenger.MessagesController;
+	MessagesController.prototype = Object.create(SUPER.prototype);
+	MessagesController.prototype.constructor = MessagesController;
 
 	/**
 	 * Displays the associated view.
 	 */
-	de_sb_messenger.MessagesController.prototype.display = function () {
+	MessagesController.prototype.display = function () {
 		var sessionUser = de_sb_messenger.APPLICATION.sessionUser;
 		if (!sessionUser) return;
 		SUPER.prototype.display.call(this);
@@ -85,6 +86,12 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 		return Promise.all(avatarPromises);
 	}
 
+	var empty = function(element) {
+		while (element.firstChild) {
+			element.removeChild(element.firstChild);
+		}
+	}
+
 	var displayMessages = function(subjectIDs, parentElement) {
 		let messages = [];
 		queryMessages(subjectIDs).then(messageRequests => {
@@ -97,7 +104,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 				if (m1.creationTimestamp === m2.creationTimestamp) return 0;
 				return m1.creationTimestamp > m2.creationTimestamp? -1 : 1;
 			});
-			return queryUsers(messages.map(m => m.authorReference));
+			return queryUsers(messages.map(m => m.subjectReference));
 		}).then(userRequests => {
 			// render timestamps, bodies, authors
 			for (let i = 0; i < messages.length; i++) {
@@ -105,10 +112,8 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 				let messageElement = document.querySelector("#message-output-template").content.cloneNode(true).firstElementChild;
 				messageElement.firstElementChild.firstElementChild.addEventListener("click", e => {
 					let subListElement = messageElement.lastElementChild;
-					while (subListElement.firstChild) {
-						subListElement.removeChild(subListElement.firstChild);
-					}
-					displayMessages.call(this, [messages[i].identity], subListElement)
+					empty(subListElement);
+					displayMessages.call(this, [messages[i].identity], subListElement);
 				});
 				let creationDate = prettyPrintTimestamp(new Date(messages[i].creationTimestamp));
 				messageElement.firstElementChild.querySelector("output").value = user.name.given + " (" + creationDate + ")";
@@ -131,7 +136,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 	/**
 	 * Displays the root messages.
 	 */
-	de_sb_messenger.MessagesController.prototype.displayRootMessages = function () {
+	MessagesController.prototype.displayRootMessages = function () {
 		let sessionUser = de_sb_messenger.APPLICATION.sessionUser;
 		let subjectIDs = sessionUser.observedReferences.slice();
 		subjectIDs.push(sessionUser.identity);
@@ -146,7 +151,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 	 * @param parentElement {Element} the parent element
 	 * @param subjectIdentity {String} the subject identity
 	 */
-	de_sb_messenger.MessagesController.prototype.displayMessageEditor = function (parentElement, subjectIdentity) {
+	MessagesController.prototype.displayMessageEditor = function (parentElement, subjectIdentity) {
 		let sessionUser = de_sb_messenger.APPLICATION.sessionUser;
 		let oldElement = document.querySelector(".message-input");
 		if (oldElement) oldElement.remove();
@@ -164,11 +169,10 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 			let creationDate = prettyPrintTimestamp(new Date());
 			headerElements[2].value = person.name.given + " (" + prettyPrintTimestamp(creationDate) + ")";
 			messageElement.querySelector("button").addEventListener("click", e => {
-				this.persistMessage(messageElement, subjectIdentity);
+				this.persistMessage(parentElement, subjectIdentity);
 			});
 			parentElement.appendChild(messageElement);
 		});
-	
 	}
 
 
@@ -178,7 +182,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 	 * @param messageElement {element} the message element
 	 * @param subjectIdentity the subject identity
 	 */
-	de_sb_messenger.MessagesController.prototype.persistMessage = function (messageElement, subjectIdentity) {
+	MessagesController.prototype.persistMessage = function (messageElement, subjectIdentity) {
 		let body = `subjectReference=${subjectIdentity}&body=${messageElement.querySelector("textarea").value}`;
 		new Promise((resolve, reject) => {
 			de_sb_util.AJAX.invoke("/services/messages/", "PUT", {"Content-Type": "application/x-www-form-urlencoded"}, body, null, request => {
@@ -186,9 +190,17 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 				return resolve(request);
 			});
 		}).then(request => {
-			// REFRESH
 			this.displayStatus(request.status, request.statusText);
-			console.log("REFRESH");
+
+			let oldInput = document.querySelector(".message-input");
+			if (oldInput) oldInput.remove();
+			if (messageElement.classList.contains("messages")) {
+				empty(messageElement.querySelector("ul"));
+				this.displayRootMessages();
+			} else {
+				empty(messageElement);
+				displayMessages.call(this, [subjectIdentity], messageElement);
+			}
 		}).catch(request => {
 			this.displayStatus(request.status, request.statusText);
 		});

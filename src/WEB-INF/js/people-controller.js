@@ -78,7 +78,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 			queryParamString = "?" + queryParams.join("&");
 		}
 		
-		de_sb_util.AJAX.invoke("/services/people/" + queryParamString, "GET", null, null, null, request => {
+		de_sb_util.AJAX.invoke("/services/people" + queryParamString, "GET", null, null, null, request => {
 			this.displayStatus(request.status, request.statusText);
 			if (request.status !== 200) return;
 
@@ -120,8 +120,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 			if (request.status !== 204) return;
 			
 			sessionUser.observedReferences = observedReferences.slice();
-			let sectionElement = document.querySelector(".people-observed");
-			this.refreshAvatarSlider(sectionElement.querySelector("div.image-slider"), observedReferences, this.toggleObservation);
+			this.refreshAvatarSlider(document.querySelector(".people-observed div.image-slider"), observedReferences, this.toggleObservation);
 		});
 	}
 } ());

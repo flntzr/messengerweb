@@ -37,8 +37,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 		this.displayRootMessages();
 	}
 
-	var prettyPrintTimestamp = function(timestamp) {
-		var date = new Date(timestamp);
+	var prettyPrintTimestamp = function(date) {
 		// var month = date.toDateString();
 		// var hours = date.getHours();
 		// var minutes = "0" + date.getMinutes();
@@ -57,7 +56,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 				});
 			}));
 		}
-		return messagePromises;
+		return Promise.all(messagePromises);
 	}
 
 	var queryMessages = function(subjectReferences) {
@@ -70,7 +69,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 				});
 			}));
 		}
-		return messagePromises;
+		return Promise.all(messagePromises);
 	}
 
 	var queryAvatars = function(userIDs) {
@@ -83,13 +82,12 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 				}, "blob");
 			}));
 		}
-		return avatarPromises;
+		return Promise.all(avatarPromises);
 	}
 
 	var displayMessages = function(subjectIDs, parentElement) {
-		let messagePromises = queryMessages(subjectIDs);
 		let messages = [];
-		Promise.all(messagePromises).then(messageRequests => {
+		queryMessages(subjectIDs).then(messageRequests => {
 			this.displayStatus(messageRequests[0].status, messageRequests[0].statusText);
 
 			for (let request of messageRequests) {
@@ -99,7 +97,7 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 				if (m1.creationTimestamp === m2.creationTimestamp) return 0;
 				return m1.creationTimestamp > m2.creationTimestamp? -1 : 1;
 			});
-			return Promise.all(queryUsers(messages.map(m => m.authorReference)));
+			return queryUsers(messages.map(m => m.authorReference));
 		}).then(userRequests => {
 			// render timestamps, bodies, authors
 			for (let i = 0; i < messages.length; i++) {
@@ -112,15 +110,15 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 					}
 					displayMessages.call(this, [messages[i].identity], subListElement)
 				});
-				messageElement.firstElementChild.querySelector("output").value = user.name.given + " (" + prettyPrintTimestamp(messages[i].creationTimestamp) + ")";
+				let creationDate = prettyPrintTimestamp(new Date(messages[i].creationTimestamp));
+				messageElement.firstElementChild.querySelector("output").value = user.name.given + " (" + creationDate + ")";
 				messageElement.children[1].querySelector("output").value = messages[i].body;
 				parentElement.appendChild(messageElement);
 			}
-			return Promise.all(queryAvatars(messages.map(m => m.authorReference)));
+			return queryAvatars(messages.map(m => m.authorReference));
 		}).then(avatarRequests => {
 			// render avatars
 			var urlCreator = window.URL || window.webkitURL;
-			let requests = [];
 			let messageElements = parentElement.children;
 			for (let i = 0; i < avatarRequests.length; i++) {
 				messageElements[i].firstElementChild.querySelector("img").src = urlCreator.createObjectURL(avatarRequests[i].response);
@@ -149,8 +147,22 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 	 * @param subjectIdentity {String} the subject identity
 	 */
 	de_sb_messenger.MessagesController.prototype.displayMessageEditor = function (parentElement, subjectIdentity) {
-		console.log("displayMessageEditor");
-		// TODO
+		let sessionUser = de_sb_messenger.APPLICATION.sessionUser;
+		let oldElement = document.querySelector(".message-input");
+		if (oldElement) {
+			oldElement.remove();
+		}
+		
+		let messageInputElement = document.querySelector("#message-input-template").content.cloneNode(true).firstElementChild;
+		queryAvatars([sessionUser.identity]).then(requests => {
+			var urlCreator = window.URL || window.webkitURL;
+			let headerElements = messageInputElement.firstElementChild.children;
+			headerElements[1].querySelector("img").src = urlCreator.createObjectURL(requests[0].response);
+			let creationDate = prettyPrintTimestamp(new Date());
+			headerElements[2].value = "TODO" + " (" + prettyPrintTimestamp(creationDate) + ")";
+			parentElement.appendChild(messageInputElement);
+		})
+	
 	}
 
 

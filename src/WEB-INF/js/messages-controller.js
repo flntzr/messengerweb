@@ -86,16 +86,8 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 		return avatarPromises;
 	}
 
-	/**
-	 * Displays the root messages.
-	 */
-	de_sb_messenger.MessagesController.prototype.displayRootMessages = function () {
-		let sessionUser = de_sb_messenger.APPLICATION.sessionUser;
-		let subjectIDs = sessionUser.observedReferences.slice();
-		subjectIDs.push(sessionUser.identity);
-
+	var displayMessages = function(subjectIDs, parentElement) {
 		let messagePromises = queryMessages(subjectIDs);
-		let messagesListElement = document.querySelector(".messages > ul");
 		let messages = [];
 		Promise.all(messagePromises).then(messageRequests => {
 			this.displayStatus(messageRequests[0].status, messageRequests[0].statusText);
@@ -113,22 +105,34 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 			for (let i = 0; i < messages.length; i++) {
 				let user = JSON.parse(userRequests[i].response);
 				let messageElement = document.querySelector("#message-output-template").content.cloneNode(true).firstElementChild;
+				messageElement.firstElementChild.firstElementChild.addEventListener("click", e => displayMessages.call(this, [messages[i].identity], messageElement.lastElementChild));
 				messageElement.firstElementChild.querySelector("output").value = user.name.given + " (" + prettyPrintTimestamp(messages[i].creationTimestamp) + ")";
 				messageElement.children[1].querySelector("output").value = messages[i].body;
-				messagesListElement.appendChild(messageElement);
+				parentElement.appendChild(messageElement);
 			}
 			return Promise.all(queryAvatars(messages.map(m => m.authorReference)));
 		}).then(avatarRequests => {
 			// render avatars
 			var urlCreator = window.URL || window.webkitURL;
 			let requests = [];
-			let messageElements = messagesListElement.children;
+			let messageElements = parentElement.children;
 			for (let i = 0; i < avatarRequests.length; i++) {
 				messageElements[i].firstElementChild.querySelector("img").src = urlCreator.createObjectURL(avatarRequests[i].response);
 			}			
 		}).catch(request => {
-			this.displayStatus(request.status, request.statusText);
+			displayStatus(request.status, request.statusText);
 		});		
+	}
+
+	/**
+	 * Displays the root messages.
+	 */
+	de_sb_messenger.MessagesController.prototype.displayRootMessages = function () {
+		let sessionUser = de_sb_messenger.APPLICATION.sessionUser;
+		let subjectIDs = sessionUser.observedReferences.slice();
+		subjectIDs.push(sessionUser.identity);
+		let messagesListElement = document.querySelector(".messages > ul");
+		displayMessages.call(this, subjectIDs, messagesListElement);
 	}
 
 

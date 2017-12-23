@@ -6,31 +6,37 @@
 
 this.de_sb_messenger = this.de_sb_messenger || {};
 (function () {
-	var SUPER = de_sb_messenger.Controller;
-	// const APPLICATION = de_sb_messenger.APPLICATION;
+	// imports
+	const Semaphore = de_sb_util.Semaphore;
+	const StatusAccumulator = de_sb_util.StatusAccumulator;
+	const Controller = de_sb_messenger.Controller;
+	const AJAX = de_sb_util.AJAX;
+	const APPLICATION = de_sb_messenger.APPLICATION;
+
 
 	/**
 	 * Creates a new messages controller that is derived from an abstract controller.
 	 * @param entityCache {de_sb_util.EntityCache} an entity cache
 	 */
 	const MessagesController = de_sb_messenger.MessagesController = function (entityCache) {
-		SUPER.call(this, 1, entityCache);
+		Controller.call(this, 1, entityCache);
 	}
-	MessagesController.prototype = Object.create(SUPER.prototype);
+	MessagesController.prototype = Object.create(Controller.prototype);
 	MessagesController.prototype.constructor = MessagesController;
+
 
 	/**
 	 * Displays the associated view.
 	 */
 	MessagesController.prototype.display = function () {
-		var sessionUser = de_sb_messenger.APPLICATION.sessionUser;
+		const sessionUser = APPLICATION.sessionUser;
 		if (!sessionUser) return;
-		SUPER.prototype.display.call(this);
+		Controller.prototype.display.call(this);
 
-		var subjectIdentities = [sessionUser.identity].concat(sessionUser.observedReferences);
-		var mainElement = document.querySelector("main");
-		var subjectsElement = document.querySelector("#subjects-template").content.cloneNode(true).firstElementChild;
-		var messagesElement = document.querySelector("#messages-template").content.cloneNode(true).firstElementChild;
+		const subjectIdentities = [sessionUser.identity].concat(sessionUser.observedReferences);
+		const mainElement = document.querySelector("main");
+		const subjectsElement = document.querySelector("#subjects-template").content.cloneNode(true).firstElementChild;
+		const messagesElement = document.querySelector("#messages-template").content.cloneNode(true).firstElementChild;
 		mainElement.appendChild(subjectsElement);
 		mainElement.appendChild(messagesElement);
 

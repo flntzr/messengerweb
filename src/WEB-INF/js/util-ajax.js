@@ -31,41 +31,45 @@ this.de_sb_util = this.de_sb_util || {};
 		          null for synchronized request processing
 		 * @return the XmlHttpRequest
 		 */
-		this.invoke = function (resource, method, header, body, credentials, callback, responseType) {
-			var request = new XMLHttpRequest();
-			request.overrideMimeType("text/plain");
-			if (responseType) request.responseType = responseType;
+		Object.defineProperty(this, "invoke", {
+			configurable: false,
+			enumerable: false,
+			value: function (resource, method, header, body, credentials, callback, responseType) {
+				const request = new XMLHttpRequest();
+				request.overrideMimeType("text/plain");
+				if (responseType) request.responseType = responseType;
 
-			var asynchronous = typeof callback == "function";
-			if (asynchronous) {
-				request.addEventListener("readystatechange", function () {
-					if (this.readyState === 4) callback.call(null, this);
-				});
+				const asynchronous = typeof callback == "function";
+				if (asynchronous) {
+					request.addEventListener("readystatechange", function () {
+						if (this.readyState === 4) callback.call(null, this);
+					});
+				}
+
+				if (credentials) {
+					request.open(method, resource, asynchronous, credentials.alias, credentials.password);
+				} else {
+					request.open(method, resource, asynchronous);
+				}
+
+				for (let key in (header || {})) {
+					request.setRequestHeader(key, header[key]);
+				}
+				request.send(body || "");
+
+				return request;
 			}
-
-			if (credentials) {
-				request.open(method, resource, asynchronous, credentials.alias, credentials.password);
-			} else {
-				request.open(method, resource, asynchronous);
-			}
-
-			for (var key in (header || {})) {
-				request.setRequestHeader(key, header[key]);
-			}
-			request.send(body || "");
-
-			return request;
-		}
+		});
 	}
 
-	
+
 	/**
 	 * Creates a new request status accumulator. the accumulator stores the
 	 * highest request status accumulated, and it's associated status text.
 	 */
 	de_sb_util.StatusAccumulator = function () {
-		var worstStatus = -1;
-		var worstStatusText = null;
+		let worstStatus = -1;
+		let worstStatusText = null;
 
 		/**
 		 * The (read-only) accumulated status.
@@ -122,9 +126,8 @@ this.de_sb_util = this.de_sb_util || {};
 	 * @throws TypeError if the given ticket count is not a number
 	 */
 	de_sb_util.Semaphore = function (initialTicketCount) {
-		var ticketCount = Math.floor(initialTicketCount);
-		var actionQueue = [];
-		var self = this;
+		let ticketCount = Math.floor(initialTicketCount);
+		const actionQueue = [];
 
 		/**
 		 * The (read-only) number of tickets currently available for acquisition.
@@ -187,7 +190,7 @@ this.de_sb_util = this.de_sb_util || {};
 			enumerable: false,
 			value: function () {
 				if (ticketCount == 0 && actionQueue.length > 0) {
-					var action = actionQueue.shift();
+					const action = actionQueue.shift();
 					action.call();
 				} else {
 					ticketCount += 1;

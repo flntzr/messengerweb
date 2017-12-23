@@ -28,15 +28,19 @@ this.de_sb_util = this.de_sb_util || {};
 		* @param {Object} object the object to be marshaled
 		* @return {String} the marshaled XML document
 		*/
-		this.marshal = function (rootElementName, object) {
-			var objectType = Object.prototype.toString.call(object); 
-			if (objectType === "[object Array]" || objectType === "[object Function]") return "";
+		Object.defineProperty(this, "marshal", {
+			configurable: false,
+			enumerable: false,
+			value: function (rootElementName, object) {
+				const objectType = Object.prototype.toString.call(object); 
+				if (objectType === "[object Array]" || objectType === "[object Function]") return "";
 
-			var xmlHeader = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>";
-			if (object === null) return xmlHeader;
-			return xmlHeader + recursiveMarshal(rootElementName, object);
-		}
-
+				const xmlHeader = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>";
+				if (object === null) return xmlHeader;
+				return xmlHeader + recursiveMarshal(rootElementName, object);
+			}
+		});
+		
 
 		/**
 		* Recursively unmarshals the given XML text into an object. If the XML root element
@@ -49,11 +53,15 @@ this.de_sb_util = this.de_sb_util || {};
 		* @param {String} xmlElement the XML element
 		* @return {Object} a generic object
 		*/
-		this.unmarshal = function (xml) {
-			var dom = new DOMParser().parseFromString(xml, "text/xml");
-			var domRootElement = dom.childNodes[0];
-			return recursiveUnmarshal(domRootElement);
-		}
+		Object.defineProperty(this, "unmarshal", {
+			configurable: false,
+			enumerable: false,
+			value: function (xml) {
+				const dom = new DOMParser().parseFromString(xml, "text/xml");
+				const domRootElement = dom.childNodes[0];
+				return recursiveUnmarshal(domRootElement);
+			}
+		});
 
 
 		/**
@@ -69,13 +77,13 @@ this.de_sb_util = this.de_sb_util || {};
 		* @return {String} the marshaled XML element
 		*/
 		function recursiveMarshal (elementName, object) {
-			var attributeXml = "", bodyXml = "";
+			let attributeXml = "", bodyXml = "";
 
-			for (var key in object) {
-				var value = object[key], valueType = Object.prototype.toString.call(value);
+			for (let key in object) {
+				const value = object[key], valueType = Object.prototype.toString.call(value);
 
 				if (valueType === "[object Array]") {
-					for (var valueIndex = 0; valueIndex < value.length; ++valueIndex) {
+					for (let valueIndex = 0; valueIndex < value.length; ++valueIndex) {
 						bodyXml += recursiveMarshal(key, value[valueIndex])
 					}
 				} else if (valueType === "[object String]" || valueType === "[object Number]" || valueType === "[object Boolean]") {
@@ -101,20 +109,20 @@ this.de_sb_util = this.de_sb_util || {};
 		function recursiveUnmarshal (domElement) {
 			if(domElement.nodeName == "#text") return domElement.nodeValue.trim();
 
-			var result = {};
+			const result = {};
 			if ("attributes" in domElement) {
-				for(var stop = domElement.attributes.length, index = 0; index < stop; ++index) {
-					var domAttribute = domElement.attributes[index];
+				for(let stop = domElement.attributes.length, index = 0; index < stop; ++index) {
+					const domAttribute = domElement.attributes[index];
 					result[domAttribute.nodeName] = domAttribute.nodeValue;
 				}
 			}
 
-			for (var stop = domElement.childNodes.length, index = 0; index < stop; ++index) {
-				var domChildElement = domElement.childNodes[index];
-				var name = domChildElement.nodeName, value = recursiveUnmarshal(domChildElement);
+			for (let stop = domElement.childNodes.length, index = 0; index < stop; ++index) {
+				const domChildElement = domElement.childNodes[index];
+				const name = domChildElement.nodeName, value = recursiveUnmarshal(domChildElement);
 
 				if (name in result) {
-					var existingValue = result[name];
+					const existingValue = result[name];
 					if (Object.prototype.toString.call(existingValue) === "[object Array]") {
 						existingValue.push(value);
 					} else {

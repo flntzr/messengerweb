@@ -6,28 +6,34 @@
 
 this.de_sb_messenger = this.de_sb_messenger || {};
 (function () {
-	var SUPER = de_sb_messenger.Controller;
+	// imports
+	const Semaphore = de_sb_util.Semaphore;
+	const StatusAccumulator = de_sb_util.StatusAccumulator;
+	const Controller = de_sb_messenger.Controller;
+	const AJAX = de_sb_util.AJAX;
+	const APPLICATION = de_sb_messenger.APPLICATION;
+
 
 	/**
 	 * Creates a new welcome controller that is derived from an abstract controller.
 	 * @param entityCache {de_sb_util.EntityCache} an entity cache
 	 */
-	de_sb_messenger.WelcomeController = function (entityCache) {
-		SUPER.call(this, 0, entityCache);
+	const WelcomeController = de_sb_messenger.WelcomeController = function (entityCache) {
+		Controller.call(this, 0, entityCache);
 	}
-	de_sb_messenger.WelcomeController.prototype = Object.create(SUPER.prototype);
-	de_sb_messenger.WelcomeController.prototype.constructor = de_sb_messenger.WelcomeController;
+	WelcomeController.prototype = Object.create(Controller.prototype);
+	WelcomeController.prototype.constructor = WelcomeController;
 
 
 	/**
 	 * Displays the associated view.
 	 */
-	de_sb_messenger.WelcomeController.prototype.display = function () {
+	WelcomeController.prototype.display = function () {
 		de_sb_messenger.APPLICATION.sessionUser	= null;
 		this.entityCache.clear();
-		SUPER.prototype.display.call(this);
+		Controller.prototype.display.call(this);
 
-		var sectionElement = document.querySelector("#login-template").content.cloneNode(true).firstElementChild;
+		const sectionElement = document.querySelector("#login-template").content.cloneNode(true).firstElementChild;
 		sectionElement.querySelector("button").addEventListener("click", this.login.bind(this));
 		document.querySelector("main").appendChild(sectionElement);
 	}
@@ -38,35 +44,34 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 	 * user object if the login was successful, and initiates rendering of the
 	 * message view.
 	 */
-	de_sb_messenger.WelcomeController.prototype.login = function () {
-		var inputElements = document.querySelectorAll("section.login input");
-		var credentials = { alias: inputElements[0].value.trim(), password: inputElements[1].value.trim() };
+	WelcomeController.prototype.login = function () {
+		const inputElements = document.querySelectorAll("section.login input");
+		const credentials = { alias: inputElements[0].value.trim(), password: inputElements[1].value.trim() };
 		if (!credentials.alias | !credentials.password) {
 			this.displayStatus(401, "Unauthorized");
 			return;
 		}
 
-		var self = this;
-		var header = {"Accept": "application/json"};
-		de_sb_util.AJAX.invoke("/services/people/requester", "GET", header, null, credentials, function (request) {
-			self.displayStatus(request.status, request.statusText);
+		const header = {"Accept": "application/json"};
+		AJAX.invoke("/services/people/requester", "GET", header, null, credentials, request => {
+			this.displayStatus(request.status, request.statusText);
 			if (request.status !== 200) return;
 
-			var sessionUser = JSON.parse(request.responseText);
+			const sessionUser = JSON.parse(request.responseText);
 			sessionUser.observingReferences = [];
 			sessionUser.observedReferences = [];
-			self.entityCache.put(sessionUser);
-			de_sb_messenger.APPLICATION.sessionUser = sessionUser;
+			this.entityCache.put(sessionUser);
+			APPLICATION.sessionUser = sessionUser;
 
-			var indebtedSemaphore = new de_sb_util.Semaphore(1 - 2);
-			var statusAccumulator = new de_sb_util.StatusAccumulator();
+			const indebtedSemaphore = new Semaphore(1 - 2);
+			const statusAccumulator = new StatusAccumulator();
 
-			var resource = "/services/people/" + sessionUser.identity + "/peopleObserved";
-			de_sb_util.AJAX.invoke(resource, "GET", header, null, null, function (request) {
+			const leftResource = "/services/people/" + sessionUser.identity + "/peopleObserved";
+			AJAX.invoke(leftResource, "GET", header, null, null, request => {
 				if (request.status === 200) {
-					var people = JSON.parse(request.responseText);
-					people.forEach(function (person) {
-						self.entityCache.put(person);
+					const people = JSON.parse(request.responseText);
+					people.forEach(person => {
+						this.entityCache.put(person);
 						sessionUser.observedReferences.push(person.identity);
 					});
 				}
@@ -74,12 +79,12 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 				indebtedSemaphore.release();
 			});
 
-			resource = "/services/people/" + sessionUser.identity + "/peopleObserving";
-			de_sb_util.AJAX.invoke(resource, "GET", header, null, null, function (request) {
+			const rightResource = "/services/people/" + sessionUser.identity + "/peopleObserving";
+			AJAX.invoke(rightResource, "GET", header, null, null, request => {
 				if (request.status === 200) {
-					var people = JSON.parse(request.responseText);
-					people.forEach(function (person) {
-						self.entityCache.put(person);
+					const people = JSON.parse(request.responseText);
+					people.forEach(person => {
+						this.entityCache.put(person);
 						sessionUser.observingReferences.push(person.identity);
 					});
 				}
@@ -87,9 +92,9 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 				indebtedSemaphore.release();
 			});
 
-			indebtedSemaphore.acquire(function () {
-				self.displayStatus(statusAccumulator.status, statusAccumulator.statusText);
-				de_sb_messenger.APPLICATION.preferencesController.display();
+			indebtedSemaphore.acquire(() => {
+				this.displayStatus(statusAccumulator.status, statusAccumulator.statusText);
+				APPLICATION.preferencesController.display();
 			});
 		});
 	}

@@ -6,37 +6,42 @@
 
 this.de_sb_messenger = this.de_sb_messenger || {};
 (function () {
-	var SUPER = de_sb_messenger.Controller;
-	var QUERY_PARAMETER_NAMES = ["email", "givenName", "familyName", "street", "city"];
+	// imports
+	const Controller = de_sb_messenger.Controller;
+	const AJAX = de_sb_util.AJAX;
+	const APPLICATION = de_sb_messenger.APPLICATION;
+
+	// parameter names for person criteria queries
+	const QUERY_PARAMETER_NAMES = ["email", "givenName", "familyName", "street", "city"];
+
 
 	/**
 	 * Creates a new people controller that is derived from an abstract controller.
 	 * @param entityCache {de_sb_util.EntityCache} an entity cache
 	 */
-	de_sb_messenger.PeopleController = function (entityCache) {
-		SUPER.call(this, 2, entityCache);
+	const PeopleController = de_sb_messenger.PeopleController = function (entityCache) {
+		Controller.call(this, 2, entityCache);
 	}
-	de_sb_messenger.PeopleController.prototype = Object.create(SUPER.prototype);
-	de_sb_messenger.PeopleController.prototype.constructor = de_sb_messenger.PeopleController;
+	PeopleController.prototype = Object.create(Controller.prototype);
+	PeopleController.prototype.constructor = PeopleController;
 
 
 	/**
 	 * Displays the associated view.
 	 */
-	de_sb_messenger.PeopleController.prototype.display = function () {
-		var sessionUser = de_sb_messenger.APPLICATION.sessionUser;
-		if (!sessionUser) return;
+	PeopleController.prototype.display = function () {
+		if (!APPLICATION.sessionUser) return;
 
-		SUPER.prototype.display.call(this);
+		Controller.prototype.display.call(this);
 		this.displayStatus(200, "OK");
 
-		var mainElement = document.querySelector("main");
-		var sectionElement = document.querySelector("#people-observing-template").content.cloneNode(true).firstElementChild;
-		this.refreshAvatarSlider(sectionElement.querySelector("div.image-slider"), sessionUser.observingReferences, this.toggleObservation);
+		const mainElement = document.querySelector("main");
+		let sectionElement = document.querySelector("#people-observing-template").content.cloneNode(true).firstElementChild;
+		this.refreshAvatarSlider(sectionElement.querySelector("div.image-slider"), APPLICATION.sessionUser.observingReferences, this.toggleObservation);
 		mainElement.appendChild(sectionElement);
 
 		sectionElement = document.querySelector("#people-observed-template").content.cloneNode(true).firstElementChild;
-		this.refreshAvatarSlider(sectionElement.querySelector("div.image-slider"), sessionUser.observedReferences, this.toggleObservation);
+		this.refreshAvatarSlider(sectionElement.querySelector("div.image-slider"), APPLICATION.sessionUser.observedReferences, this.toggleObservation);
 		mainElement.appendChild(sectionElement);
 
 		sectionElement = document.querySelector("#candidates-template").content.cloneNode(true).firstElementChild;

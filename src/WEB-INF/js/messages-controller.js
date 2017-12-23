@@ -138,10 +138,13 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 				let messageElement = document.querySelector("#message-output-template").content.cloneNode(true).firstElementChild;
 				messageElement.firstElementChild.firstElementChild.addEventListener("click", e => {
 					let subListElement = messageElement.lastElementChild;
+					let expand = subListElement.innerHTML === "";
 					empty(subListElement);
-					queryMessagesForSubjects.call(this, [messages[i].identity]).then(messagesForSubject => {
-						displayMessages.call(this, messagesForSubject.map(m => m.identity), subListElement);
-					});
+					if (expand) {
+						queryMessagesForSubjects.call(this, [messages[i].identity]).then(messagesForSubject => {
+							displayMessages.call(this, messagesForSubject.map(m => m.identity), subListElement);
+						});
+					}
 				});
 				let creationDate = prettyPrintTimestamp(new Date(messages[i].creationTimestamp));
 				messageElement.firstElementChild.querySelector("output").value = user.name.given + " (" + creationDate + ")";

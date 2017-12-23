@@ -200,15 +200,10 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 		let avatar;
 		queryAvatars.call(this, [sessionUser.identity]).then(avatars => {
 			avatar = avatars[0];
-			return queryMessage.call(this, subjectIdentity);
-		}).then(message => {
-			return queryUsers.call(this, [message.authorReference]);
-		}).then(users => {
-			let person = users[0];
 			let headerElements = messageElement.firstElementChild.children;
-			headerElements[1].querySelector("img").src = avatar;
 			let creationDate = prettyPrintTimestamp(new Date());
-			headerElements[2].value = person.name.given + " (" + prettyPrintTimestamp(creationDate) + ")";
+			headerElements[1].querySelector("img").src = avatar;
+			headerElements[2].value = de_sb_messenger.APPLICATION.sessionUser.name.given + " (" + prettyPrintTimestamp(creationDate) + ")";
 			messageElement.querySelector("button").addEventListener("click", e => {
 				this.persistMessage(parentElement, subjectIdentity);
 			});

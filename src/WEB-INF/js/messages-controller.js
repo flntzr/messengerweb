@@ -148,8 +148,13 @@ this.de_sb_messenger = this.de_sb_messenger || {};
 					empty(subListElement);
 					if (expand) {
 						queryMessagesForSubjects.call(this, [messages[i].identity]).then(messagesForSubject => {
+							if (messagesForSubject.length > 0) {
+								messageElement.classList.toggle("expanded");
+							}
 							displayMessages.call(this, messagesForSubject.map(m => m.identity), subListElement);
 						});
+					} else {
+						messageElement.classList.toggle("expanded");
 					}
 				});
 				let creationDate = prettyPrintTimestamp(new Date(messages[i].creationTimestamp));
